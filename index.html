@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>倒计时</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+    background: #f5f5f5;
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .wrap {
+    background: #fff;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    width: 360px;
+    display: flex; flex-direction: column; align-items: center; gap: 1.5rem;
+    box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+  }
+  .title { font-size: 18px; font-weight: 500; color: #111; display: flex; align-items: center; gap: 8px; }
+  .presets { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+  .preset {
+    font-size: 12px; padding: 5px 12px; border-radius: 20px;
+    border: 1px solid #ddd; background: transparent; color: #555; cursor: pointer;
+  }
+  .preset:hover { background: #f0f0f0; }
+  .time-inputs { display: flex; align-items: center; gap: 8px; }
+  .time-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .time-group label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.05em; }
+  .time-group input {
+    width: 76px; height: 52px; text-align: center; font-size: 30px; font-weight: 500;
+    border: 1px solid #ddd; border-radius: 10px; background: #f9f9f9; color: #111; outline: none;
+    -moz-appearance: textfield;
+  }
+  .time-group input::-webkit-inner-spin-button,
+  .time-group input::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .time-group input:focus { border-color: #aaa; background: #fff; }
+  .sep { font-size: 30px; font-weight: 500; color: #bbb; margin-bottom: 18px; }
+  .countdown {
+    font-size: 68px; font-weight: 500; color: #111;
+    letter-spacing: 0.04em; font-variant-numeric: tabular-nums;
+    transition: color 0.3s;
+  }
+  .countdown.warning { color: #d85a30; }
+  .countdown.done { color: #639922; }
+  .progress-bar { width: 100%; height: 5px; background: #eee; border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #555; border-radius: 3px; transition: width 0.8s linear, background 0.3s; }
+  .progress-fill.warning { background: #d85a30; }
+  .status { font-size: 13px; color: #888; height: 18px; }
+  .btn-row { display: flex; gap: 8px; }
+  .btn {
+    padding: 10px 22px; border-radius: 10px; border: 1px solid #ddd;
+    background: transparent; color: #111; font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .btn:hover { background: #f5f5f5; }
+  .btn.primary { background: #111; color: #fff; border-color: transparent; }
+  .btn.primary:hover { background: #333; }
+  .divider { width: 100%; height: 1px; background: #eee; }
+  .pip-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 18px; border-radius: 10px; border: 1px solid #ddd;
+    background: transparent; color: #555; font-size: 14px; cursor: pointer; width: 100%; justify-content: center;
+  }
+  .pip-btn:hover { background: #f5f5f5; color: #111; }
+  .hint { font-size: 12px; color: #aaa; text-align: center; line-height: 1.7; }
+
+  @media (prefers-color-scheme: dark) {
+    body { background: #1a1a1a; }
+    .wrap { background: #242424; box-shadow: 0 2px 20px rgba(0,0,0,0.3); }
+    .title, .countdown { color: #f0f0f0; }
+    .time-group input { background: #2e2e2e; border-color: #444; color: #f0f0f0; }
+    .time-group input:focus { background: #333; border-color: #666; }
+    .preset { border-color: #444; color: #aaa; }
+    .preset:hover { background: #2e2e2e; }
+    .btn { border-color: #444; color: #f0f0f0; }
+    .btn:hover { background: #2e2e2e; }
+    .btn.primary { background: #f0f0f0; color: #111; }
+    .btn.primary:hover { background: #ccc; }
+    .pip-btn { border-color: #444; color: #aaa; }
+    .pip-btn:hover { background: #2e2e2e; color: #f0f0f0; }
+    .progress-bar { background: #333; }
+    .progress-fill { background: #aaa; }
+    .divider { background: #333; }
+    .hint { color: #666; }
+    .status { color: #666; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="title">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    倒计时
+  </p>
+
+  <div class="presets">
+    <button class="preset" onclick="setPreset(0,30)">30秒</button>
+    <button class="preset" onclick="setPreset(1,0)">1分钟</button>
+    <button class="preset" onclick="setPreset(5,0)">5分钟</button>
+    <button class="preset" onclick="setPreset(10,0)">10分钟</button>
+    <button class="preset" onclick="setPreset(25,0)">25分钟</button>
+  </div>
+
+  <div class="time-inputs" id="inputArea">
+    <div class="time-group">
+      <label>时</label>
+      <input type="number" id="hh" min="0" max="99" value="0" oninput="clamp(this,99)">
+    </div>
+    <span class="sep">:</span>
+    <div class="time-group">
+      <label>分</label>
+      <input type="number" id="mm" min="0" max="59" value="5" oninput="clamp(this,59)">
+    </div>
+    <span class="sep">:</span>
+    <div class="time-group">
+      <label>秒</label>
+      <input type="number" id="ss" min="0" max="59" value="0" oninput="clamp(this,59)">
+    </div>
+  </div>
+
+  <div class="display" style="display:flex;flex-direction:column;align-items:center;gap:10px;width:100%">
+    <div class="countdown" id="countdown">00:05:00</div>
+    <div class="progress-bar"><div class="progress-fill" id="progFill" style="width:100%"></div></div>
+    <p class="status" id="status"></p>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn primary" id="startBtn" onclick="toggle()">
+      <svg id="btnIcon" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      <span id="btnLabel">开始</span>
+    </button>
+    <button class="btn" onclick="reset()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+      重置
+    </button>
+  </div>
+
+  <div class="divider"></div>
+
+  <button class="pip-btn" onclick="startPiP()">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><rect x="12" y="10" width="8" height="5" rx="1"/></svg>
+    悬浮画中画
+  </button>
+  <p class="hint" id="pipHint">点击后切换到其他 app，倒计时将悬浮在屏幕上。<br>建议使用 Safari 浏览器打开此文件。</p>
+</div>
+
+<video id="pipVideo" style="display:none" muted playsinline></video>
+<canvas id="pipCanvas" style="display:none"></canvas>
+
+<script>
+let total = 0, remaining = 0, running = false, interval = null, pipActive = false;
+const video = document.getElementById('pipVideo');
+const canvas = document.getElementById('pipCanvas');
+const ctx = canvas.getContext('2d');
+canvas.width = 400; canvas.height = 200;
+
+const isDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+function getInput() {
+  return (+document.getElementById('hh').value||0)*3600
+       + (+document.getElementById('mm').value||0)*60
+       + (+document.getElementById('ss').value||0);
+}
+function fmt(s) {
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  return (h>0?pad(h)+':':'')+pad(m)+':'+pad(ss);
+}
+function pad(n) { return String(n).padStart(2,'0'); }
+function clamp(el, max) { el.value = Math.min(max, Math.max(0, parseInt(el.value)||0)); updateDisplay(); }
+
+function updateDisplay() {
+  const t = running ? remaining : getInput();
+  const el = document.getElementById('countdown');
+  el.textContent = fmt(t);
+  el.className = 'countdown' + (t<=10&&t>0&&running?' warning':'') + (remaining===0&&total>0&&!running?' done':'');
+  const fill = document.getElementById('progFill');
+  const pct = total>0 ? (t/total)*100 : 100;
+  fill.style.width = pct+'%';
+  fill.className = 'progress-fill'+(t<=10&&t>0&&running?' warning':'');
+}
+
+const playIcon = '<polygon points="5 3 19 12 5 21 5 3"/>';
+const pauseIcon = '<rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>';
+
+function toggle() {
+  if (!running) {
+    const t = getInput();
+    if (!t) return;
+    if (remaining===0) { total = t; remaining = t; }
+    running = true;
+    document.getElementById('btnIcon').innerHTML = pauseIcon;
+    document.getElementById('btnLabel').textContent = '暂停';
+    document.getElementById('inputArea').style.opacity = '0.4';
+    document.getElementById('inputArea').style.pointerEvents = 'none';
+    interval = setInterval(tick, 1000);
+  } else {
+    running = false;
+    clearInterval(interval); interval = null;
+    document.getElementById('btnIcon').innerHTML = playIcon;
+    document.getElementById('btnLabel').textContent = '继续';
+    document.getElementById('status').textContent = '已暂停';
+  }
+}
+
+function tick() {
+  remaining--;
+  updateDisplay();
+  if (pipActive) drawPiP();
+  if (remaining<=0) {
+    clearInterval(interval); interval = null; running = false;
+    document.getElementById('btnIcon').innerHTML = playIcon;
+    document.getElementById('btnLabel').textContent = '重新开始';
+    document.getElementById('status').textContent = '✓ 时间到！';
+    document.getElementById('inputArea').style.opacity = '1';
+    document.getElementById('inputArea').style.pointerEvents = 'auto';
+    if (pipActive) drawPiP();
+    try {
+      const ac = new (window.AudioContext||window.webkitAudioContext)();
+      [880,660,880].forEach((f,i) => {
+        const o = ac.createOscillator(), g = ac.createGain();
+        o.connect(g); g.connect(ac.destination);
+        o.frequency.value = f; g.gain.value = 0.3;
+        o.start(ac.currentTime+i*0.2);
+        o.stop(ac.currentTime+i*0.2+0.15);
+      });
+    } catch(e) {}
+  }
+}
+
+function reset() {
+  clearInterval(interval); interval = null; running = false; remaining = 0;
+  document.getElementById('btnIcon').innerHTML = playIcon;
+  document.getElementById('btnLabel').textContent = '开始';
+  document.getElementById('status').textContent = '';
+  document.getElementById('inputArea').style.opacity = '1';
+  document.getElementById('inputArea').style.pointerEvents = 'auto';
+  updateDisplay();
+  if (pipActive) drawPiP();
+}
+
+function setPreset(m, s) {
+  document.getElementById('hh').value = 0;
+  document.getElementById('mm').value = m;
+  document.getElementById('ss').value = s;
+  if (!running) { remaining = 0; updateDisplay(); }
+}
+
+function drawPiP() {
+  const t = running ? remaining : (remaining===0&&total>0 ? 0 : getInput());
+  const done = remaining===0&&total>0&&!running;
+  const dark = isDark();
+  ctx.fillStyle = dark ? '#1a1a1a' : '#ffffff';
+  ctx.fillRect(0,0,400,200);
+  ctx.fillStyle = done ? '#639922' : (t<=10&&t>0&&running ? '#d85a30' : (dark?'#f0f0f0':'#111'));
+  ctx.font = '700 80px -apple-system, Helvetica Neue, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(fmt(t), 200, 90);
+  ctx.fillStyle = dark ? '#666' : '#aaa';
+  ctx.font = '400 18px -apple-system, Helvetica Neue, sans-serif';
+  ctx.fillText(done ? '✓ 时间到！' : (running ? '运行中' : '已暂停'), 200, 160);
+  if (total>0) {
+    const pct = t/total;
+    ctx.fillStyle = dark ? '#333' : '#eee';
+    ctx.beginPath(); ctx.roundRect(40,180,320,6,3); ctx.fill();
+    ctx.fillStyle = done ? '#639922' : (t<=10&&t>0 ? '#d85a30' : '#555');
+    ctx.beginPath(); ctx.roundRect(40,180,Math.max(0,320*pct),6,3); ctx.fill();
+  }
+}
+
+async function startPiP() {
+  try {
+    drawPiP();
+    const stream = canvas.captureStream(4);
+    video.srcObject = stream;
+    await video.play();
+    if (!('requestPictureInPicture' in video)) {
+      document.getElementById('pipHint').textContent = '您的浏览器不支持画中画，请使用 Safari 打开此文件。';
+      return;
+    }
+    await video.requestPictureInPicture();
+    pipActive = true;
+    document.getElementById('pipHint').textContent = '✓ 画中画已开启！切换到其他 app 后仍可看到倒计时。';
+    video.addEventListener('leavepictureinpicture', () => { pipActive = false; });
+  } catch(e) {
+    document.getElementById('pipHint').textContent = '提示：请先点击"开始"，再点击"悬浮画中画"。';
+  }
+}
+
+updateDisplay();
+</script>
+</body>
+</html>
